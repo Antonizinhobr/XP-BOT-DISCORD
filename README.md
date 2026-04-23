@@ -231,12 +231,32 @@ const RECOMPENSAS = {
 };
 ```
 
-### Passo 5: Ligando a Entidade
-Execute no terminal:
+### Passo 5: Testando Localmente
+Execute no terminal da sua máquina para garantir que tudo funciona:
 ```bash
 node index.js
 ```
 Se tudo estiver correto, você verá no terminal: `🤖 Bot online como O_Nome_Do_Seu_Bot#1234` e `✅ Firebase inicializado com sucesso!`.
+
+### Passo 6: Hospedando na Discloud ☁️ (Para ficar online 24/7)
+Para manter o bot rodando mesmo com o seu PC desligado, você pode hospedá-lo na [Discloud](https://discloudbot.com/).
+
+1. Certifique-se de que o arquivo `discloud.config` na raiz do seu projeto está configurado corretamente. Exemplo:
+```ini
+NAME=RefugioDaNevoa
+TYPE=bot
+MAIN=index.js
+RAM=100
+AUTORESTART=false
+VERSION=latest
+APT=tools
+```
+2. **Compacte os arquivos:** Selecione todos os arquivos essenciais do seu bot (`index.js`, `package.json`, `discloud.config` e o seu arquivo `.env` configurado).
+   * **⚠️ IMPORTANTE:** NÃO inclua a pasta `node_modules` no arquivo `.zip`. A Discloud instala as dependências automaticamente baseada no seu `package.json`.
+3. Adicione esses arquivos selecionados em um arquivo **.zip**.
+4. Acesse o painel da Discloud (faça login com o Discord).
+5. Clique em **"Add App"** (Adicionar App) e envie o seu arquivo `.zip`.
+6. Após o upload, é só iniciar o aplicativo no painel e seu bot estará imortal na Névoa, online 24 horas por dia!
 
 ---
 *Desenvolvido para fortalecer a comunidade na Névoa.* 🩸
