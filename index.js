@@ -2,9 +2,6 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder, PermissionFlagsBits, MessageFlags, SlashCommandBuilder, REST, Routes } = require('discord.js');
 const admin = require('firebase-admin');
 
-// ==========================================
-// INICIALIZAÇÃO DO FIREBASE
-// ==========================================
 try {
     if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY) {
         console.error('❌ Variáveis de ambiente do Firebase não configuradas corretamente!');
@@ -35,9 +32,6 @@ const client = new Client({
     ]
 });
 
-// ==========================================
-// HANDLERS GLOBAIS DE ERRO
-// ==========================================
 process.on('unhandledRejection', (error) => {
     console.error('❌ Promessa rejeitada não tratada:', error);
 });
@@ -50,16 +44,10 @@ setInterval(() => {
     console.log('💓 Heartbeat enviado em', new Date().toISOString());
 }, 5 * 60 * 1000);
 
-// ==========================================
-// VARIÁVEIS GLOBAIS
-// ==========================================
 const cooldowns = new Map();
 const ultimaMensagem = new Map();
 const voiceSessions = new Map();
 
-// ==========================================
-// CONFIGURAÇÕES
-// ==========================================
 const COOLDOWN_TEMPO = 10000;
 const XP_MIN = 15;
 const XP_MAX = 25;
@@ -94,14 +82,9 @@ const CANAIS_IGNORADOS = [
 
 const BOOSTERS_MANUAIS = [];
 
-// ==========================================
-// SISTEMA DE NÍVEIS (CORRIGIDO)
-// ==========================================
-
-// XP necessário para CADA nível individual (XP acumulado total)
 function calcularXPNecessarioParaNivel(nivel) {
     if (nivel <= 1) return 0;
-    if (nivel <= 10) return nivel * 1000;  // ✅ CORRIGIDO: Nv10 = 10.000 XP
+    if (nivel <= 10) return nivel * 1000;
     
     let xpTotal = 10000; // XP até nível 10
     
@@ -125,7 +108,6 @@ function calcularXPNecessarioParaNivel(nivel) {
     return xpTotal;
 }
 
-// Calcula o nível baseado no XP
 function calcularNivelPorXP(xp) {
     for (let nivel = 1; nivel <= 200; nivel++) {
         const xpNecessario = calcularXPNecessarioParaNivel(nivel + 1);
@@ -136,7 +118,6 @@ function calcularNivelPorXP(xp) {
     return 200;
 }
 
-// Calcula quanto falta para o próximo nível
 function calcularXPProximoNivel(xp, nivelAtual) {
     const xpProximo = calcularXPNecessarioParaNivel(nivelAtual + 1);
     const faltando = Math.max(0, xpProximo - xp);
@@ -151,9 +132,6 @@ function formatarData(data) {
     return data.toLocaleDateString('pt-BR');
 }
 
-// ==========================================
-// CONQUISTAS (ATÉ NÍVEL 150)
-// ==========================================
 const CONQUISTAS = {
     10: 'Deja Vu',
     20: 'Quick & Quiet',
@@ -215,9 +193,6 @@ async function isBooster(userId, guild) {
     }
 }
 
-// ==========================================
-// FUNÇÕES DO FIREBASE
-// ==========================================
 async function garantirColecao() {
     try {
         const testRef = db.collection('usuarios_xp').limit(1);
@@ -268,36 +243,27 @@ async function garantirUsuario(userId) {
     }
 }
 
-// ==========================================
-// VERIFICAR LEVEL UP (CORRIGIDO)
-// ==========================================
 async function verificarLevelUp(userId, guild, nivelAntigo, nivelNovo) {
     try {
-        // Busca o documento atualizado do usuário para pegar o XP real
         const userRef = db.collection('usuarios_xp').doc(userId);
         const doc = await userRef.get();
         if (!doc.exists) return;
         
         const xpAtual = doc.data().xp || 0;
         
-        // Só processa se o XP for suficiente para o nível atual
         const xpNecessarioNivelAtual = calcularXPNecessarioParaNivel(nivelNovo);
         
-        // ⚠️ VERIFICAÇÃO CRÍTICA: Só prossegue se o XP for suficiente
         if (xpAtual < xpNecessarioNivelAtual) {
             console.log(`⚠️ Usuário ${userId} tem nível ${nivelNovo} mas XP (${xpAtual}) < necessário (${xpNecessarioNivelAtual}). Corrigindo...`);
             
-            // Corrige o nível no banco
             const nivelCorrigido = calcularNivelPorXP(xpAtual);
             await userRef.update({ nivel: nivelCorrigido });
-            return; // Não anuncia level up falso
+            return;
         }
         
-        // Verifica quais níveis múltiplos de 10 foram alcançados
         const niveisMilestone = [];
         for (let i = Math.floor(nivelAntigo / 10) + 1; i <= Math.floor(nivelNovo / 10); i++) {
             const milestone = i * 10;
-            // Verifica se o XP realmente é suficiente para este milestone
             const xpNecessarioMilestone = calcularXPNecessarioParaNivel(milestone);
             if (xpAtual >= xpNecessarioMilestone) {
                 niveisMilestone.push(milestone);
@@ -345,9 +311,6 @@ async function verificarLevelUp(userId, guild, nivelAntigo, nivelNovo) {
     }
 }
 
-// ==========================================
-// ADICIONAR XP
-// ==========================================
 async function adicionarXPMensagem(userId, guild, addXp, canalAviso = null) {
     try {
         if (!userId || !guild) return false;
@@ -424,9 +387,6 @@ async function adicionarXPCall(userId, guild, canalAviso = null) {
     }
 }
 
-// ==========================================
-// RANKING AUTOMÁTICO
-// ==========================================
 async function enviarRankingAutomatico() {
     try {
         const canal = await client.channels.fetch(CANAL_RANKING_AUTO).catch(() => null);
@@ -467,9 +427,6 @@ async function enviarRankingAutomatico() {
     }
 }
 
-// ==========================================
-// GERENCIAR XP (ADMIN)
-// ==========================================
 async function gerenciarXP(userId, guild, quantidade, operacao, motivo = '') {
     try {
         await garantirUsuario(userId);
@@ -508,9 +465,6 @@ async function gerenciarXP(userId, guild, quantidade, operacao, motivo = '') {
     }
 }
 
-// ==========================================
-// CORRIGIR NÍVEIS DE TODOS OS USUÁRIOS
-// ==========================================
 async function corrigirNiveisTodos() {
     try {
         const snapshot = await db.collection('usuarios_xp').get();
@@ -538,9 +492,6 @@ async function corrigirNiveisTodos() {
     }
 }
 
-// ==========================================
-// COMANDOS SLASH
-// ==========================================
 client.once('ready', async () => {
     console.log(`🤖 Bot online como ${client.user.tag}`);
     await garantirColecao();
@@ -583,13 +534,9 @@ client.once('ready', async () => {
     setInterval(() => enviarRankingAutomatico(), 6 * 60 * 60 * 1000);
 });
 
-// ==========================================
-// INTERAÇÕES
-// ==========================================
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
     
-    // Verificação de admin para comandos restritos
     if (['admin_xp', 'admin_ver', 'ranking', 'admin_corrigir_niveis'].includes(interaction.commandName)) {
         if (!isAdmin(interaction.member)) {
             return interaction.reply({ 
@@ -613,10 +560,7 @@ client.on('interactionCreate', async interaction => {
             });
         }
     }
-    
-    // ==========================================
-    // COMANDO MANUAL
-    // ==========================================
+
     if (interaction.commandName === 'manual') {
         const embed = new EmbedBuilder()
             .setColor('#ff0033')
@@ -655,9 +599,6 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ embeds: [embed] });
     }
     
-    // ==========================================
-    // COMANDO PERFIL
-    // ==========================================
     if (interaction.commandName === 'perfil') {
         try {
             await garantirUsuario(interaction.user.id);
@@ -702,9 +643,6 @@ client.on('interactionCreate', async interaction => {
         }
     }
     
-    // ==========================================
-    // COMANDO RANKING
-    // ==========================================
     if (interaction.commandName === 'ranking') {
         const snapshot = await db.collection('usuarios_xp').orderBy('xp', 'desc').limit(10).get();
         if (snapshot.empty) return interaction.reply({ content: '❌ Nenhum usuário no ranking!' });
@@ -730,9 +668,6 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ embeds: [embed] });
     }
     
-    // ==========================================
-    // COMANDO ADMIN_CORRIGIR_NIVEIS
-    // ==========================================
     if (interaction.commandName === 'admin_corrigir_niveis') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         
@@ -743,9 +678,6 @@ client.on('interactionCreate', async interaction => {
         });
     }
     
-    // ==========================================
-    // COMANDOS ADMIN
-    // ==========================================
     if (interaction.commandName === 'admin_xp') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const sub = interaction.options.getSubcommand();
@@ -785,7 +717,6 @@ client.on('interactionCreate', async interaction => {
         const nivel = doc.exists ? doc.data().nivel || 1 : 1;
         const stats = doc.exists ? doc.data().stats || { mensagens: 0, tempoCall: 0 } : { mensagens: 0, tempoCall: 0 };
         
-        // Calcula o nível correto baseado no XP
         const nivelCorreto = calcularNivelPorXP(xp);
         const statusNivel = nivel === nivelCorreto ? '✅ Correto' : `⚠️ Deveria ser ${nivelCorreto}`;
         
@@ -806,9 +737,6 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-// ==========================================
-// SISTEMA DE XP POR MENSAGEM
-// ==========================================
 client.on('messageCreate', async message => {
     if (message.author.bot || !message.guild) return;
     if (!CANAIS_PERMITIDOS_XP.includes(message.channelId)) return;
@@ -827,9 +755,6 @@ client.on('messageCreate', async message => {
     await adicionarXPMensagem(message.author.id, message.guild, xpGanho);
 });
 
-// ==========================================
-// SISTEMA DE XP POR CALL
-// ==========================================
 client.on('voiceStateUpdate', async (oldState, newState) => {
     try {
         const userId = newState.id || oldState.id;
@@ -866,14 +791,8 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
     }
 });
 
-// ==========================================
-// HANDLER DE ERROS DO CLIENTE
-// ==========================================
 client.on('error', (error) => console.error('❌ Erro no cliente:', error));
 client.on('disconnect', () => console.log('⚠️ Bot desconectado. Tentando reconectar...'));
 
-// ==========================================
-// LOGIN
-// ==========================================
 console.log('⏳ Conectando à Entidade...');
 client.login(process.env.TOKEN);
