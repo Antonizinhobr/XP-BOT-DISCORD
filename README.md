@@ -49,9 +49,51 @@ O sistema foi desenhado para ser justo e recompensar a verdadeira atividade:
 * **Ganho:** **10 XP** a cada 1 minuto conectado em uma call válida.
 * **Restrições:** Entrar em canais ignorados (como AFK ou música) pausa a contagem.
 
-### 3. Multiplicador e Níveis
+### 3. Multiplicador de XP
 * **Boosters:** Recebem **3x mais XP** em todas as ações.
-* **Level Up:** A dificuldade escala. Do Nível 1 ao 10 são 1.000 XP por nível. A partir do Nível 11, o requisito aumenta progressivamente.
+
+---
+
+## 🏆 Progressão, Níveis e Conquistas
+
+O ganho de níveis é contínuo, mas o reconhecimento público da Entidade acontece em momentos cruciais.
+
+### A Lógica de 1 em 1 vs. 10 em 10
+* **Progressão Silenciosa (1 em 1):** O usuário ganha níveis de 1 em 1. A dificuldade escala (do Nível 1 ao 10 são 1.000 XP por nível; a partir do 11, o requisito aumenta progressivamente).
+* **Marcos de Conquista (10 em 10):** Para evitar flood no chat e tornar as recompensas mais exclusivas, **o bot só envia a mensagem de Level Up e só adiciona um cargo novo a cada 10 níveis alcançados**.
+
+### A Mensagem da Entidade
+Quando um usuário atinge uma dezena (Nível 10, 20, 30...), o bot envia uma notificação temática no canal de avisos e entrega automaticamente o cargo correspondente. A mensagem enviada é esta:
+
+> **🔥 ASCENSÃO NA NÉVOA!**
+> 🎉 @here @Usuario acaba de subir para o nível **[X]**! 🎉
+> 
+> A Névoa sussurra o seu nome, @Usuario...
+> Sua dedicação foi reconhecida e você ascendeu para o **Nível [X]**!
+> 
+> 🏆 **Nova Conquista:** [Nome do Perk]
+> 🩸 Você foi condecorado com o cargo @NomeDoCargo! *(E um GIF comemorativo acompanha a mensagem).*
+
+### Tabela Completa de Cargos e Conquistas
+As conquistas vão do Nível 10 ao 150, inspiradas em *Perks* famosos do universo do terror:
+
+* **Nível 10:** Deja Vu (10.000 XP)
+* **Nível 20:** Quick & Quiet (25.000 XP)
+* **Nível 30:** Self-Care (45.000 XP)
+* **Nível 40:** Bond (70.000 XP)
+* **Nível 50:** Leader (100.000 XP)
+* **Nível 60:** Adrenaline (135.000 XP)
+* **Nível 70:** Borrowed Time (175.000 XP)
+* **Nível 80:** BBQ & Chili (220.000 XP)
+* **Nível 90:** Dying Light (270.000 XP)
+* **Nível 100:** Devour Hope (325.000 XP)
+* **Nível 110:** Corrupt Intervention (385.000 XP)
+* **Nível 120:** No One Escapes Death (450.000 XP)
+* **Nível 130:** Nemesis (515.000 XP)
+* **Nível 140:** Blood Warden (590.000 XP)
+* **Nível 150:** Decisive Strike (670.000 XP)
+
+*(Jogadores abaixo do Nível 10 possuem o título "Inexperienced (No One Left Behind)" no seu `/perfil`).*
 
 ---
 
@@ -67,7 +109,7 @@ Abaixo estão os Slash Commands disponíveis e como eles funcionam na prática d
 
 * **`/manual`**
   * *O que faz:* Exibe as regras e tabelas de conquistas do servidor.
-  * *Exemplo de uso:* Você digita `/manual`. O bot envia a lista com todos os cargos temáticos que podem ser ganhos (Ex: Nível 10: Deja Vu, Nível 50: Leader).
+  * *Exemplo de uso:* Você digita `/manual`. O bot envia a lista com todos os cargos temáticos que podem ser ganhos.
 
 ### 🛡️ Comandos Administrativos (Apenas Staff)
 
@@ -126,7 +168,7 @@ Abaixo estão os Slash Commands disponíveis e como eles funcionam na prática d
 
 1. Baixe ou clone este repositório:
    ```bash
-   git clone https://github.com/Antonizinhobr/XP-BOT-DISCORD
+   git clone [https://github.com/Antonizinhobr/XP-BOT-DISCORD.git](https://github.com/Antonizinhobr/XP-BOT-DISCORD.git)
    cd XP-BOT-DISCORD
    ```
 2. Instale as dependências:
