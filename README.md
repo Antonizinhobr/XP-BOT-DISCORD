@@ -95,7 +95,6 @@ As conquistas vão do Nível 10 ao 150, inspiradas em *Perks* famosos do univers
 
 *(Jogadores abaixo do Nível 10 possuem o título "Inexperienced (No One Left Behind)" no seu `/perfil`).*
 
-*(OBS: Esses niveis, sao cargos que você cria dentro do seu servidor)*
 ---
 
 ## 💻 Comandos e Exemplos de Uso
@@ -160,33 +159,54 @@ Abaixo estão os Slash Commands disponíveis e como eles funcionam na prática d
 2. Clique em **"Criar um projeto"** e dê um nome a ele.
 3. No menu lateral, expanda a aba **"Criação"** (Build) e clique em **"Firestore Database"**.
 4. Clique em **"Criar banco de dados"** em **Modo de Produção** (Production mode).
-5. Pegue as chaves de acesso: Clique na engrenagem ⚙️ (Configurações do projeto) no canto superior esquerdo e vá em **"Contas de Serviço"** (Service Accounts).
-6. Clique no botão azul **"Gerar nova chave privada"**. Isso baixará um arquivo `.json`.
-7. Abra esse arquivo com o Bloco de Notas. Você precisará de: `project_id`, `client_email` e `private_key`.
+5. **Pegando as chaves de acesso:** Clique na engrenagem ⚙️ (Configurações do projeto) no canto superior esquerdo e vá em **"Contas de Serviço"** (Service Accounts).
+6. Clique no botão azul **"Gerar nova chave privada"**. Isso baixará um arquivo `.json` para o seu computador.
+7. Abra esse arquivo baixado usando o Bloco de Notas (ou qualquer editor de texto). Ele terá um formato parecido com este:
+```json
+{
+  "type": "service_account",
+  "project_id": "seu-projeto-123",
+  "private_key_id": "abc123def456...",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0B...\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-xyz@seu-projeto-123.iam.gserviceaccount.com",
+  ...
+}
+```
+**Guarde este arquivo aberto!** Você precisará copiar exatamente os valores que estão na frente de `"project_id"`, `"client_email"` e `"private_key"` no próximo passo.
 
 ### Passo 3: Configurando Variáveis de Ambiente (.env)
 **⚠️ ATENÇÃO:** Por motivos de segurança, o arquivo que guarda as senhas (`.env`) está no `.gitignore` e não é enviado para o GitHub. Você precisa criá-lo manualmente.
 
 1. Baixe ou clone este repositório:
    ```bash
-   git clone [https://github.com/Antonizinhobr/XP-BOT-DISCORD.git](https://github.com/Antonizinhobr/XP-BOT-DISCORD.git)
+   git clone https://github.com/Antonizinhobr/XP-BOT-DISCORD.git
    cd XP-BOT-DISCORD
    ```
 2. Instale as dependências:
    ```bash
    npm install discord.js dotenv firebase-admin
    ```
-3. Na pasta principal, crie um arquivo chamado exatamente `.env` e preencha seguindo **exatamente** este formato:
+3. Na pasta principal, crie um arquivo chamado exatamente `.env` (com o ponto no começo) e preencha usando as informações que você pegou do Discord (Passo 1) e do arquivo JSON do Firebase (Passo 2), seguindo **exatamente** este formato:
 
 ```env
 TOKEN=COLE_AQUI_O_TOKEN_DO_SEU_BOT_DO_DISCORD
-FIREBASE_PROJECT_ID=COLE_AQUI_O_PROJECT_ID
-FIREBASE_CLIENT_EMAIL=COLE_AQUI_O_CLIENT_EMAIL
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nSuaChaveGiganteAqui\n-----END PRIVATE KEY-----\n"
+FIREBASE_PROJECT_ID=seu-projeto-123
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xyz@seu-projeto-123.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0B...\n-----END PRIVATE KEY-----\n"
 ```
+*(**Dica Importante:** A chave `FIREBASE_PRIVATE_KEY` precisa estar toda na mesma linha, com as quebras de linha representadas por `\n`, e envolta em aspas duplas `""`, exatamente como vem no bloco de notas).*
 
 ### Passo 4: Configurando os IDs dentro do Código
-Antes de ligar, abra o arquivo `index.js`, vá até a seção `CONFIGURAÇÕES` e substitua todas as constantes abaixo pelos IDs reais do seu servidor do Discord:
+
+#### Como pegar IDs no Discord?
+Para que o bot saiba em quais canais agir, você precisa informar os IDs numéricos deles.
+1. Abra as configurações do Discord (engrenagem ⚙️).
+2. Vá na aba **"Avançado"** (no aplicativo para PC) ou **"Aparência"** (no celular).
+3. Ative a opção **"Modo Desenvolvedor"**.
+4. Agora, basta clicar com o botão direito (ou segurar, no celular) em cima de qualquer **Usuário, Canal ou Cargo** e selecionar a última opção: **"Copiar ID"**.
+
+#### Aplicando no Código
+Abra o arquivo `index.js`, vá até a seção `CONFIGURAÇÕES` e substitua todas as constantes abaixo pelos IDs reais que você acabou de copiar do seu servidor:
 
 ```javascript
 const CANAL_PERMITIDO_COMANDOS = 'ID_DO_CANAL_DE_COMANDOS';
