@@ -95,6 +95,7 @@ As conquistas vão do Nível 10 ao 150, inspiradas em *Perks* famosos do univers
 
 *(Jogadores abaixo do Nível 10 possuem o título "Inexperienced (No One Left Behind)" no seu `/perfil`).*
 
+*(OBS: Esses niveis, sao cargos que você cria dentro do seu servidor)*
 ---
 
 ## 💻 Comandos e Exemplos de Uso
