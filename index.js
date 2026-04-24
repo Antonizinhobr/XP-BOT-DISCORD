@@ -52,12 +52,14 @@ const COOLDOWN_TEMPO = 10000;
 const XP_MIN = 15;
 const XP_MAX = 25;
 const XP_POR_MINUTO_CALL = 10;
-const MULTIPLICADOR_BOOSTER = 3;
+const MULTIPLICADOR_BOOSTER = 2.2; // Alterado de 3 para 2.2
+const MULTIPLICADOR_VIP_LEGACY = 2.0; // Novo multiplicador para VIP LEGACY
 
 const CANAL_PERMITIDO_COMANDOS = '1495875498021093587';
 const CANAL_RANKING_AUTO = '1495875650530185367';
 const CANAL_LEVEL_UP = '1171355134199091241';
 const CARGO_BOOSTER_ID = '1484332657616617574';
+const CARGO_VIP_LEGACY_ID = '1495994246883315782'; // ID do cargo VIP LEGACY
 const CANAL_LOGS_ADMIN = '1497013267460129011';
 
 const ADMIN_IDS = [];
@@ -181,6 +183,29 @@ function isAdmin(member) {
     return false;
 }
 
+// Função para calcular o multiplicador do usuário (prioridade: Booster > VIP LEGACY > Normal)
+async function getMultiplicadorXP(userId, guild) {
+    try {
+        const membro = await guild.members.fetch(userId).catch(() => null);
+        if (!membro) return 1;
+        
+        const temBooster = membro.roles.cache.has(CARGO_BOOSTER_ID) || BOOSTERS_MANUAIS.includes(userId);
+        const temVipLegacy = membro.roles.cache.has(CARGO_VIP_LEGACY_ID);
+        
+        if (temBooster) {
+            return MULTIPLICADOR_BOOSTER; // 2.2x
+        }
+        if (temVipLegacy) {
+            return MULTIPLICADOR_VIP_LEGACY; // 2.0x
+        }
+        return 1; // Normal
+    } catch (error) {
+        console.error('❌ Erro ao verificar multiplicador:', error);
+        return 1;
+    }
+}
+
+// Mantendo a função isBooster para compatibilidade (agora retorna se tem booster OU vip legacy? Não, manter só booster)
 async function isBooster(userId, guild) {
     try {
         const membro = await guild.members.fetch(userId).catch(() => null);
@@ -351,8 +376,11 @@ async function adicionarXPMensagem(userId, guild, addXp, canalAviso = null) {
     try {
         if (!userId || !guild) return false;
         await garantirUsuario(userId);
-        const booster = await isBooster(userId, guild);
-        let xpFinal = booster ? Math.floor(addXp * MULTIPLICADOR_BOOSTER) : addXp;
+        
+        // Usa a nova função de multiplicador
+        const multiplicador = await getMultiplicadorXP(userId, guild);
+        let xpFinal = Math.floor(addXp * multiplicador);
+        
         const userRef = db.collection('usuarios_xp').doc(userId);
         const doc = await userRef.get();
         if (!doc.exists) return false;
@@ -382,8 +410,11 @@ async function adicionarXPCall(userId, guild, canalAviso = null) {
     try {
         if (!userId || !guild) return false;
         await garantirUsuario(userId);
-        const booster = await isBooster(userId, guild);
-        let xpGanho = booster ? XP_POR_MINUTO_CALL * MULTIPLICADOR_BOOSTER : XP_POR_MINUTO_CALL;
+        
+        // Usa a nova função de multiplicador
+        const multiplicador = await getMultiplicadorXP(userId, guild);
+        let xpGanho = Math.floor(XP_POR_MINUTO_CALL * multiplicador);
+        
         const userRef = db.collection('usuarios_xp').doc(userId);
         const doc = await userRef.get();
         if (!doc.exists) return false;
@@ -502,6 +533,7 @@ async function corrigirNiveisTodos() {
 
 client.once('ready', async () => {
     console.log(`🤖 Bot online como ${client.user.tag}`);
+    console.log(`📊 Multiplicadores: Booster = ${MULTIPLICADOR_BOOSTER}x | VIP LEGACY = ${MULTIPLICADOR_VIP_LEGACY}x`);
     await garantirColecao();
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
     const commands = [
@@ -568,7 +600,7 @@ client.on('interactionCreate', async interaction => {
             .setTitle('📖 MANUAL DO SOBREVIVENTE')
             .setDescription('Bem-vindo ao sistema de progressão do **Refúgio da Névoa**!\n*Quanto mais ativo, mais forte você se torna...*')
             .addFields(
-                { name: '🎯 COMO GANHAR XP', value: '```\n📝 Mensagens: 15-25 XP (cooldown de 10 segundos)\n🎤 Call de Voz: 10 XP por minuto (tempo real)\n⚡ Booster: 3x mais XP!\n🚫 Canais de música/AFK não contam XP\n```', inline: false },
+                { name: '🎯 COMO GANHAR XP', value: '```\n📝 Mensagens: 15-25 XP (cooldown de 10 segundos)\n🎤 Call de Voz: 10 XP por minuto (tempo real)\n⚡ Booster: 2.2x mais XP!\n👑 VIP LEGACY: 2.0x mais XP!\n🚫 Canais de música/AFK não contam XP\n```', inline: false },
                 { name: '📊 NÍVEIS E CONQUISTAS', value: '```\n🏆 Nível 10: Deja Vu (10.000 XP)\n🏆 Nível 20: Quick & Quiet (25.000 XP)\n🏆 Nível 30: Self-Care (45.000 XP)\n🏆 Nível 40: Bond (70.000 XP)\n🏆 Nível 50: Leader (100.000 XP)\n🏆 Nível 60: Adrenaline (135.000 XP)\n🏆 Nível 70: Borrowed Time (175.000 XP)\n🏆 Nível 80: BBQ & Chili (220.000 XP)\n🏆 Nível 90: Dying Light (270.000 XP)\n🏆 Nível 100: Devour Hope (325.000 XP)\n🏆 Nível 110: Corrupt Intervention (385.000 XP)\n🏆 Nível 120: No One Escapes Death (450.000 XP)\n🏆 Nível 130: Nemesis (515.000 XP)\n🏆 Nível 140: Blood Warden (590.000 XP)\n🏆 Nível 150: Decisive Strike (670.000 XP)\n```', inline: false },
                 { name: '👥 COMANDOS PÚBLICOS', value: '```\n/perfil - Ver seu perfil completo\n/manual - Este manual interativo\n```', inline: true },
                 { name: '🛡️ COMANDOS ADMINISTRATIVOS', value: '```\n/ranking - Top 10 do servidor\n/admin_xp add - Adicionar XP\n/admin_xp remove - Remover XP\n/admin_xp set - Definir XP exato\n/admin_xp reset - Resetar XP\n/admin_ver - Ver informações\n/admin_corrigir_niveis - Corrigir níveis\n```\n⚠️ *Apenas administradores podem usar estes comandos*', inline: true },
