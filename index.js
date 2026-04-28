@@ -52,14 +52,14 @@ const COOLDOWN_TEMPO = 10000;
 const XP_MIN = 15;
 const XP_MAX = 25;
 const XP_POR_MINUTO_CALL = 10;
-const MULTIPLICADOR_BOOSTER = 2.2; // Alterado de 3 para 2.2
-const MULTIPLICADOR_VIP_LEGACY = 2.0; // Novo multiplicador para VIP LEGACY
+const MULTIPLICADOR_BOOSTER = 2.2;
+const MULTIPLICADOR_VIP_LEGACY = 2.0;
 
 const CANAL_PERMITIDO_COMANDOS = '1495875498021093587';
 const CANAL_RANKING_AUTO = '1495875650530185367';
 const CANAL_LEVEL_UP = '1171355134199091241';
 const CARGO_BOOSTER_ID = '1484332657616617574';
-const CARGO_VIP_LEGACY_ID = '1495994246883315782'; // ID do cargo VIP LEGACY
+const CARGO_VIP_LEGACY_ID = '1495994246883315782';
 const CANAL_LOGS_ADMIN = '1497013267460129011';
 
 const ADMIN_IDS = [];
@@ -74,7 +74,10 @@ const CANAIS_PERMITIDOS_XP = [
     '1482054540105613455', '1480914969297158264', '1171348338189283348',
     '1171353763886399529', '1198083237201838090', '1171354225385685104',
     '1171354377336930304', '1490734159851687936', '1496484238143393936',
-    '1496251465616855223', '1496251176440696833', '1496251246623985837'
+    '1496251465616855223', '1496251176440696833', '1496251246623985837',
+    '1498409706383872000', '1498409826567586044', '1498642462103699666',
+    '1498642485528891505', '1498409856321851442', '1498410084655567048',
+    '1498642550616227939', '1498642614675701800', '1497757782588391474'
 ];
 
 const CANAIS_IGNORADOS = [
@@ -183,29 +186,21 @@ function isAdmin(member) {
     return false;
 }
 
-// Função para calcular o multiplicador do usuário (prioridade: Booster > VIP LEGACY > Normal)
 async function getMultiplicadorXP(userId, guild) {
     try {
         const membro = await guild.members.fetch(userId).catch(() => null);
         if (!membro) return 1;
-        
         const temBooster = membro.roles.cache.has(CARGO_BOOSTER_ID) || BOOSTERS_MANUAIS.includes(userId);
         const temVipLegacy = membro.roles.cache.has(CARGO_VIP_LEGACY_ID);
-        
-        if (temBooster) {
-            return MULTIPLICADOR_BOOSTER; // 2.2x
-        }
-        if (temVipLegacy) {
-            return MULTIPLICADOR_VIP_LEGACY; // 2.0x
-        }
-        return 1; // Normal
+        if (temBooster) return MULTIPLICADOR_BOOSTER;
+        if (temVipLegacy) return MULTIPLICADOR_VIP_LEGACY;
+        return 1;
     } catch (error) {
         console.error('❌ Erro ao verificar multiplicador:', error);
         return 1;
     }
 }
 
-// Mantendo a função isBooster para compatibilidade (agora retorna se tem booster OU vip legacy? Não, manter só booster)
 async function isBooster(userId, guild) {
     try {
         const membro = await guild.members.fetch(userId).catch(() => null);
@@ -214,6 +209,27 @@ async function isBooster(userId, guild) {
         return membro.roles.cache.has(CARGO_BOOSTER_ID);
     } catch (error) {
         return false;
+    }
+}
+
+async function gerenciarCargosPorNivel(membro, nivelNovo, nivelAntigo) {
+    try {
+        const todosCargosNivel = Object.values(RECOMPENSAS).filter(id => id !== 'ID_CARGO');
+        for (const cargoId of todosCargosNivel) {
+            const cargo = membro.guild.roles.cache.get(cargoId);
+            if (cargo && membro.roles.cache.has(cargoId)) {
+                await membro.roles.remove(cargo).catch(() => {});
+            }
+        }
+        const milestoneAtual = Math.floor(nivelNovo / 10) * 10;
+        if (milestoneAtual >= 10 && RECOMPENSAS[milestoneAtual] && RECOMPENSAS[milestoneAtual] !== 'ID_CARGO') {
+            const cargoNovo = membro.guild.roles.cache.get(RECOMPENSAS[milestoneAtual]);
+            if (cargoNovo && !membro.roles.cache.has(RECOMPENSAS[milestoneAtual])) {
+                await membro.roles.add(cargoNovo).catch(() => {});
+            }
+        }
+    } catch (error) {
+        console.error('❌ Erro ao gerenciar cargos:', error);
     }
 }
 
@@ -331,6 +347,10 @@ async function verificarLevelUp(userId, guild, nivelAntigo, nivelNovo) {
             await userRef.update({ nivel: nivelCorrigido });
             return;
         }
+        const membro = await guild.members.fetch(userId).catch(() => null);
+        if (membro && nivelNovo > nivelAntigo) {
+            await gerenciarCargosPorNivel(membro, nivelNovo, nivelAntigo);
+        }
         const niveisMilestone = [];
         for (let i = Math.floor(nivelAntigo / 10) + 1; i <= Math.floor(nivelNovo / 10); i++) {
             const milestone = i * 10;
@@ -340,7 +360,6 @@ async function verificarLevelUp(userId, guild, nivelAntigo, nivelNovo) {
             }
         }
         if (niveisMilestone.length === 0) return;
-        const membro = await guild.members.fetch(userId).catch(() => null);
         const canalEvolucao = await client.channels.fetch(CANAL_LEVEL_UP).catch(() => null);
         if (!canalEvolucao || !membro || !canalEvolucao.isTextBased?.()) return;
         for (const milestone of niveisMilestone) {
@@ -352,7 +371,6 @@ async function verificarLevelUp(userId, guild, nivelAntigo, nivelNovo) {
                 const cargoId = RECOMPENSAS[milestone];
                 const cargo = guild.roles.cache.get(cargoId);
                 if (cargo) {
-                    await membro.roles.add(cargo).catch(() => {});
                     mensagemDescricao += `\n\n🩸 Você foi condecorado com o cargo <@&${cargoId}>!`;
                     ganhouCargo = true;
                 }
@@ -376,11 +394,8 @@ async function adicionarXPMensagem(userId, guild, addXp, canalAviso = null) {
     try {
         if (!userId || !guild) return false;
         await garantirUsuario(userId);
-        
-        // Usa a nova função de multiplicador
         const multiplicador = await getMultiplicadorXP(userId, guild);
         let xpFinal = Math.floor(addXp * multiplicador);
-        
         const userRef = db.collection('usuarios_xp').doc(userId);
         const doc = await userRef.get();
         if (!doc.exists) return false;
@@ -410,11 +425,8 @@ async function adicionarXPCall(userId, guild, canalAviso = null) {
     try {
         if (!userId || !guild) return false;
         await garantirUsuario(userId);
-        
-        // Usa a nova função de multiplicador
         const multiplicador = await getMultiplicadorXP(userId, guild);
         let xpGanho = Math.floor(XP_POR_MINUTO_CALL * multiplicador);
-        
         const userRef = db.collection('usuarios_xp').doc(userId);
         const doc = await userRef.get();
         if (!doc.exists) return false;
@@ -499,6 +511,10 @@ async function gerenciarXP(userId, guild, quantidade, operacao, motivo = '') {
             ultima_modificacao: { operacao, quantidade, motivo, data: new Date(), xp_anterior: xpAtual, xp_novo: novoXp }
         }, { merge: true });
         if (novoNivel !== nivelAtual) {
+            const membro = await guild.members.fetch(userId).catch(() => null);
+            if (membro) {
+                await gerenciarCargosPorNivel(membro, novoNivel, nivelAtual);
+            }
             await verificarLevelUp(userId, guild, nivelAtual, novoNivel);
         }
         return { success: true, xpAntigo: xpAtual, xpNovo: novoXp, nivel: novoNivel };
@@ -531,6 +547,80 @@ async function corrigirNiveisTodos() {
     }
 }
 
+async function corrigirCargosTodos() {
+    try {
+        const snapshot = await db.collection('usuarios_xp').get();
+        let corrigidos = 0;
+        let erros = 0;
+        const todosCargosNivel = Object.values(RECOMPENSAS).filter(id => id !== 'ID_CARGO');
+        for (const doc of snapshot.docs) {
+            const data = doc.data();
+            if (data.is_sistema) continue;
+            const userId = doc.id;
+            const nivel = data.nivel || 1;
+            const membro = await client.guilds.cache.first().members.fetch(userId).catch(() => null);
+            if (!membro) continue;
+            try {
+                for (const cargoId of todosCargosNivel) {
+                    const cargo = membro.guild.roles.cache.get(cargoId);
+                    if (cargo && membro.roles.cache.has(cargoId)) {
+                        await membro.roles.remove(cargo).catch(() => {});
+                    }
+                }
+                const milestoneAtual = Math.floor(nivel / 10) * 10;
+                if (milestoneAtual >= 10 && RECOMPENSAS[milestoneAtual] && RECOMPENSAS[milestoneAtual] !== 'ID_CARGO') {
+                    const cargoNovo = membro.guild.roles.cache.get(RECOMPENSAS[milestoneAtual]);
+                    if (cargoNovo && !membro.roles.cache.has(RECOMPENSAS[milestoneAtual])) {
+                        await membro.roles.add(cargoNovo).catch(() => {});
+                        corrigidos++;
+                    }
+                }
+            } catch (error) {
+                erros++;
+                console.error(`❌ Erro ao corrigir cargo de ${userId}:`, error);
+            }
+        }
+        return { corrigidos, erros };
+    } catch (error) {
+        console.error('❌ Erro ao corrigir cargos:', error);
+        return { corrigidos: 0, erros: 0 };
+    }
+}
+
+async function rankingCompleto(interaction) {
+    try {
+        const snapshot = await db.collection('usuarios_xp').orderBy('xp', 'desc').get();
+        if (snapshot.empty) return interaction.reply({ content: '❌ Nenhum usuário com XP encontrado!', flags: MessageFlags.Ephemeral });
+        let rankingTexto = '';
+        let posicao = 1;
+        let totalUsuarios = 0;
+        for (const doc of snapshot.docs) {
+            const data = doc.data();
+            if (data.is_sistema) continue;
+            const membro = await interaction.guild.members.fetch(doc.id).catch(() => null);
+            if (!membro) continue;
+            const nome = membro.user.username;
+            rankingTexto += `${posicao}. **${nome}** - Nível ${data.nivel || 1} (${formatarNumero(data.xp || 0)} XP)\n`;
+            posicao++;
+            totalUsuarios++;
+            if (posicao > 50) break;
+        }
+        if (rankingTexto === '') {
+            return interaction.reply({ content: '❌ Nenhum usuário com XP encontrado!', flags: MessageFlags.Ephemeral });
+        }
+        const embed = new EmbedBuilder()
+            .setColor('#ff0033')
+            .setTitle('🏆 RANKING COMPLETO DA NÉVOA')
+            .setDescription(rankingTexto)
+            .setFooter({ text: `Comunidade Black • Total de ${totalUsuarios} usuários com XP • Mostrando top 50` })
+            .setTimestamp();
+        await interaction.reply({ embeds: [embed] });
+    } catch (error) {
+        console.error('❌ Erro no ranking completo:', error);
+        await interaction.reply({ content: '❌ Erro ao gerar ranking completo!', flags: MessageFlags.Ephemeral });
+    }
+}
+
 client.once('ready', async () => {
     console.log(`🤖 Bot online como ${client.user.tag}`);
     console.log(`📊 Multiplicadores: Booster = ${MULTIPLICADOR_BOOSTER}x | VIP LEGACY = ${MULTIPLICADOR_VIP_LEGACY}x`);
@@ -540,6 +630,7 @@ client.once('ready', async () => {
         new SlashCommandBuilder().setName('perfil').setDescription('📜 Mostra seu perfil completo na Névoa'),
         new SlashCommandBuilder().setName('manual').setDescription('📖 Explica como funciona o sistema de níveis e XP'),
         new SlashCommandBuilder().setName('ranking').setDescription('🏆 [ADMIN] Mostra o ranking do servidor'),
+        new SlashCommandBuilder().setName('ranking_completo').setDescription('🏆 Mostra todos os usuários com XP do servidor'),
         new SlashCommandBuilder().setName('admin_xp').setDescription('⚙️ [ADMIN] Gerencia XP de usuários')
             .addSubcommand(sub => sub.setName('add').setDescription('➕ Adiciona XP')
                 .addUserOption(opt => opt.setName('usuario').setDescription('👤 Usuário').setRequired(true))
@@ -558,7 +649,8 @@ client.once('ready', async () => {
                 .addStringOption(opt => opt.setName('motivo').setDescription('📝 Motivo').setRequired(false))),
         new SlashCommandBuilder().setName('admin_ver').setDescription('👁️ [ADMIN] Ver informações de um usuário')
             .addUserOption(opt => opt.setName('usuario').setDescription('👤 Usuário').setRequired(true)),
-        new SlashCommandBuilder().setName('admin_corrigir_niveis').setDescription('🔧 [ADMIN] Corrige níveis de todos os usuários')
+        new SlashCommandBuilder().setName('admin_corrigir_niveis').setDescription('🔧 [ADMIN] Corrige níveis de todos os usuários'),
+        new SlashCommandBuilder().setName('admin_corrigir_cargos').setDescription('🔧 [ADMIN] Corrige cargos de todos os usuários baseado no nível')
     ];
     try {
         await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
@@ -572,7 +664,7 @@ client.once('ready', async () => {
 
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
-    if (['admin_xp', 'admin_ver', 'ranking', 'admin_corrigir_niveis'].includes(interaction.commandName)) {
+    if (['admin_xp', 'admin_ver', 'ranking', 'admin_corrigir_niveis', 'admin_corrigir_cargos'].includes(interaction.commandName)) {
         if (!isAdmin(interaction.member)) {
             return interaction.reply({ 
                 content: '❌ **Acesso Negado!**\nEste comando é restrito apenas para **Administradores** do servidor.', 
@@ -586,7 +678,7 @@ client.on('interactionCreate', async interaction => {
             });
         }
     }
-    if (['perfil', 'manual'].includes(interaction.commandName)) {
+    if (['perfil', 'manual', 'ranking_completo'].includes(interaction.commandName)) {
         if (interaction.channelId !== CANAL_PERMITIDO_COMANDOS) {
             return interaction.reply({ 
                 content: `❌ Comandos só podem ser usados no canal <#${CANAL_PERMITIDO_COMANDOS}>!`, 
@@ -602,13 +694,16 @@ client.on('interactionCreate', async interaction => {
             .addFields(
                 { name: '🎯 COMO GANHAR XP', value: '```\n📝 Mensagens: 15-25 XP (cooldown de 10 segundos)\n🎤 Call de Voz: 10 XP por minuto (tempo real)\n⚡ Booster: 2.2x mais XP!\n👑 VIP LEGACY: 2.0x mais XP!\n🚫 Canais de música/AFK não contam XP\n```', inline: false },
                 { name: '📊 NÍVEIS E CONQUISTAS', value: '```\n🏆 Nível 10: Deja Vu (10.000 XP)\n🏆 Nível 20: Quick & Quiet (25.000 XP)\n🏆 Nível 30: Self-Care (45.000 XP)\n🏆 Nível 40: Bond (70.000 XP)\n🏆 Nível 50: Leader (100.000 XP)\n🏆 Nível 60: Adrenaline (135.000 XP)\n🏆 Nível 70: Borrowed Time (175.000 XP)\n🏆 Nível 80: BBQ & Chili (220.000 XP)\n🏆 Nível 90: Dying Light (270.000 XP)\n🏆 Nível 100: Devour Hope (325.000 XP)\n🏆 Nível 110: Corrupt Intervention (385.000 XP)\n🏆 Nível 120: No One Escapes Death (450.000 XP)\n🏆 Nível 130: Nemesis (515.000 XP)\n🏆 Nível 140: Blood Warden (590.000 XP)\n🏆 Nível 150: Decisive Strike (670.000 XP)\n```', inline: false },
-                { name: '👥 COMANDOS PÚBLICOS', value: '```\n/perfil - Ver seu perfil completo\n/manual - Este manual interativo\n```', inline: true },
-                { name: '🛡️ COMANDOS ADMINISTRATIVOS', value: '```\n/ranking - Top 10 do servidor\n/admin_xp add - Adicionar XP\n/admin_xp remove - Remover XP\n/admin_xp set - Definir XP exato\n/admin_xp reset - Resetar XP\n/admin_ver - Ver informações\n/admin_corrigir_niveis - Corrigir níveis\n```\n⚠️ *Apenas administradores podem usar estes comandos*', inline: true },
+                { name: '👥 COMANDOS PÚBLICOS', value: '```\n/perfil - Ver seu perfil completo\n/manual - Este manual interativo\n/ranking_completo - Ver todos com XP\n```', inline: true },
+                { name: '🛡️ COMANDOS ADMINISTRATIVOS', value: '```\n/ranking - Top 10 do servidor\n/admin_xp add - Adicionar XP\n/admin_xp remove - Remover XP\n/admin_xp set - Definir XP exato\n/admin_xp reset - Resetar XP\n/admin_ver - Ver informações\n/admin_corrigir_niveis - Corrigir níveis\n/admin_corrigir_cargos - Corrigir cargos\n```\n⚠️ *Apenas administradores podem usar estes comandos*', inline: true },
                 { name: '⚙️ REGRAS DO SISTEMA', value: '```\n• Progressão de 1 em 1 nível\n• Cargos e anúncios a cada 10 níveis\n• Anti-flood ativado (10 segundos)\n• Mensagens repetidas são ignoradas\n• Calls em canais de música/AFK não contam\n```', inline: false }
             )
             .setFooter({ text: 'Comunidade Black • Quanto mais ativo, mais forte você se torna!' })
             .setTimestamp();
         await interaction.reply({ embeds: [embed] });
+    }
+    if (interaction.commandName === 'ranking_completo') {
+        await rankingCompleto(interaction);
     }
     if (interaction.commandName === 'perfil') {
         try {
@@ -677,6 +772,14 @@ client.on('interactionCreate', async interaction => {
             content: `✅ **Correção concluída!**\n\n${corrigidos} usuários tiveram o nível corrigido.\n\nOs níveis agora estão consistentes com o XP de cada usuário.` 
         });
         await enviarLogAdmin(interaction, 'corrigir_niveis', { tag: 'Sistema', id: 'sistema' }, corrigidos, { success: true, xpAntigo: 0, xpNovo: 0, nivel: 0 }, `Corrigidos ${corrigidos} usuários`);
+    }
+    if (interaction.commandName === 'admin_corrigir_cargos') {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const resultado = await corrigirCargosTodos();
+        await interaction.editReply({ 
+            content: `✅ **Correção de cargos concluída!**\n\n📊 ${resultado.corrigidos} usuários tiveram os cargos corrigidos.\n⚠️ ${resultado.erros} erros encontrados.\n\nAgora cada usuário possui apenas o cargo correspondente ao seu nível atual.` 
+        });
+        await enviarLogAdmin(interaction, 'corrigir_cargos', { tag: 'Sistema', id: 'sistema' }, resultado.corrigidos, { success: true, xpAntigo: 0, xpNovo: 0, nivel: 0 }, `Corrigidos ${resultado.corrigidos} cargos, ${resultado.erros} erros`);
     }
     if (interaction.commandName === 'admin_xp') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
