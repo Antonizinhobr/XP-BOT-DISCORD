@@ -690,7 +690,7 @@ client.on('interactionCreate', async interaction => {
         const embed = new EmbedBuilder()
             .setColor('#ff0033')
             .setTitle('📖 MANUAL DO SOBREVIVENTE')
-            .setDescription('Bem-vindo ao sistema de progressão do **Refúgio da Névoa**!\n*Quanto mais ativo, mais forte você se torna...*')
+            .setDescription('Bem-vindo ao sistema de progressão do **SERVIDOR BLACK**!\n*Quanto mais ativo, mais forte você se torna...*')
             .addFields(
                 { name: '🎯 COMO GANHAR XP', value: '```\n📝 Mensagens: 15-25 XP (cooldown de 10 segundos)\n🎤 Call de Voz: 10 XP por minuto (tempo real)\n⚡ Booster: 2.2x mais XP!\n👑 VIP LEGACY: 2.0x mais XP!\n🚫 Canais de música/AFK não contam XP\n```', inline: false },
                 { name: '📊 NÍVEIS E CONQUISTAS', value: '```\n🏆 Nível 10: Deja Vu (10.000 XP)\n🏆 Nível 20: Quick & Quiet (25.000 XP)\n🏆 Nível 30: Self-Care (45.000 XP)\n🏆 Nível 40: Bond (70.000 XP)\n🏆 Nível 50: Leader (100.000 XP)\n🏆 Nível 60: Adrenaline (135.000 XP)\n🏆 Nível 70: Borrowed Time (175.000 XP)\n🏆 Nível 80: BBQ & Chili (220.000 XP)\n🏆 Nível 90: Dying Light (270.000 XP)\n🏆 Nível 100: Devour Hope (325.000 XP)\n🏆 Nível 110: Corrupt Intervention (385.000 XP)\n🏆 Nível 120: No One Escapes Death (450.000 XP)\n🏆 Nível 130: Nemesis (515.000 XP)\n🏆 Nível 140: Blood Warden (590.000 XP)\n🏆 Nível 150: Decisive Strike (670.000 XP)\n```', inline: false },
@@ -736,7 +736,7 @@ client.on('interactionCreate', async interaction => {
                     { name: '📈 Progresso', value: `▰${barraProgresso}▰\n**${percentual}%**`, inline: false },
                     { name: '🎮 Atividade', value: `**Mensagens:** ${formatarNumero(stats.mensagens)}\n**Tempo em call:** ${tempoCallHoras}h ${tempoCallMinutos}m\n**Entrou em:** ${formatarData(dataEntradaServidor)}\n**Tempo no Refúgio:** ${mesesNoServidor > 0 ? `${mesesNoServidor} meses e ${diasNoServidor % 30} dias` : `${diasNoServidor} dias`}`, inline: false }
                 )
-                .setFooter({ text: 'Refúgio da Névoa • Sistema de Progressão', iconURL: interaction.guild.iconURL({ dynamic: true }) })
+                .setFooter({ text: 'Servidor BLACK • Sistema de Progressão', iconURL: interaction.guild.iconURL({ dynamic: true }) })
                 .setTimestamp();
             await interaction.reply({ embeds: [embed] });
         } catch (error) {
