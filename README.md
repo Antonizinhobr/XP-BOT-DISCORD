@@ -106,7 +106,7 @@ Use **`/setup_orientacoes`** para definir quais canais dão XP e quais são igno
 ## ⚙️ Instalação e Hospedagem
 
 > [!IMPORTANT]
-> **O Bot Refúgio da Névoa é um serviço público!** Você **não precisa** baixar o código, configurar um banco de dados ou hospedar por conta própria para utilizá-lo. Basta adicioná-lo ao seu servidor através do link de convite oficial.
+> **O Bot de XP é um serviço público!** Você **não precisa** baixar o código, configurar um banco de dados ou hospedar por conta própria para utilizá-lo. Basta adicioná-lo ao seu servidor através do link de convite oficial.
 > 
 > As instruções abaixo são destinadas apenas a desenvolvedores que desejam realizar o **Self-Hosting** (hospedagem própria) para criar uma instância privada com seu próprio banco de dados Firebase.
 
