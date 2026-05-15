@@ -856,7 +856,7 @@ client.on('interactionCreate', async interaction => {
                     { name: '🏷️ Identidade', value: `**Usuário:** ${membro.user.tag}\n**Conquista:** ${conquista}`, inline: false },
                     { name: '📊 Progressão', value: `**Nível:** ${formatarNumero(nivel)}\n**XP Total:** ${formatarNumero(xp)}\n**Próximo:** Nível ${proximoNivel > nivel ? proximoNivel : 'MAX'}\n**Faltam:** ${formatarNumero(faltando)} XP`, inline: true },
                     { name: '📈 Progresso', value: `▰${barraProgresso}▰\n**${percentual}%**`, inline: false },
-                    { name: '🎮 Atividade', value: `**Mensagens:** ${formatarNumero(stats.mensagens)}\n**Tempo em call:** ${tempoCallHoras}h ${tempoCallMinutos}m\n**Entrou em:** ${formatarData(dataEntradaServidor)}\n**Tempo no Refúgio:** ${mesesNoServidor > 0 ? `${mesesNoServidor} meses e ${diasNoServidor % 30} dias` : `${diasNoServidor} dias`}`, inline: false }
+                    { name: '🎮 Atividade', value: `**Mensagens:** ${formatarNumero(stats.mensagens)}\n**Tempo em call:** ${tempoCallHoras}h ${tempoCallMinutos}m\n**Entrou em:** ${formatarData(dataEntradaServidor)}\n**Tempo no servidor:** ${mesesNoServidor > 0 ? `${mesesNoServidor} meses e ${diasNoServidor % 30} dias` : `${diasNoServidor} dias`}`, inline: false }
                 )
                 .setFooter({ text: 'Sistema de Progressão', iconURL: interaction.guild.iconURL({ dynamic: true }) })
                 .setTimestamp();
