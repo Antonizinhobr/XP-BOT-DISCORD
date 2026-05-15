@@ -365,7 +365,7 @@ async function enviarRankingAutomatico() {
 
             const embed = new EmbedBuilder()
                 .setColor('#ff0033')
-                .setTitle('🏆 RANKING DA NÉVOA')
+                .setTitle('🏆 RANKING NA ENTIDADE DO NEVOEIRO')
                 .setDescription(rankingTexto || 'Nenhum usuário no ranking ainda')
                 .setFooter({ text: 'Ranking atualizado automaticamente' })
                 .setTimestamp();
