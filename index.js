@@ -850,7 +850,7 @@ client.on('interactionCreate', async interaction => {
             const embed = new EmbedBuilder()
                 .setColor('#2b2d31')
                 .setAuthor({ name: membro.user.username, iconURL: membro.user.displayAvatarURL({ dynamic: true }) })
-                .setTitle('📜 Perfil da Névoa')
+                .setTitle('📜 Perfil')
                 .setThumbnail(membro.user.displayAvatarURL({ dynamic: true, size: 1024 }))
                 .addFields(
                     { name: '🏷️ Identidade', value: `**Usuário:** ${membro.user.tag}\n**Conquista:** ${conquista}`, inline: false },
