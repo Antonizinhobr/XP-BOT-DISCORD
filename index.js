@@ -260,7 +260,7 @@ async function verificarLevelUp(userId, guild, nivelAntigo, nivelNovo) {
         for (const milestone of niveisMilestone) {
             const conquista = CONQUISTAS[milestone];
             if (!conquista) continue;
-            let mensagemDescricao = `A Névoa sussurra o seu nome, <@${userId}>...\nSua dedicação foi reconhecida e você ascendeu para o **Nível ${milestone}**!\n\n🏆 **Nova Conquista:** ${conquista}`;
+            let mensagemDescricao = `A entidade do nevoeiro sussurra o seu nome, <@${userId}>...\nSua dedicação foi reconhecida e você ascendeu para o **Nível ${milestone}**!\n\n🏆 **Nova Conquista:** ${conquista}`;
             let ganhouCargo = false;
             
             if (config.cargos_recompensa && config.cargos_recompensa[milestone]) {
@@ -274,7 +274,7 @@ async function verificarLevelUp(userId, guild, nivelAntigo, nivelNovo) {
             
             const embed = new EmbedBuilder()
                 .setColor(ganhouCargo ? '#ff0033' : '#8a0000')
-                .setTitle('🔥 ASCENSÃO NA NÉVOA!')
+                .setTitle('🔥 ASCENSÃO NA ENTIDADE DO NEVOEIRO!')
                 .setDescription(mensagemDescricao)
                 .setThumbnail(membro.user.displayAvatarURL({ dynamic: true, size: 512 }))
                 .setFooter({ text: 'Sistema de XP', iconURL: guild.iconURL({ dynamic: true }) })
