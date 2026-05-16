@@ -888,7 +888,7 @@ client.on('interactionCreate', async interaction => {
         }
         const embed = new EmbedBuilder()
             .setColor('#ff0033')
-            .setTitle('🏆 RANKING DA NÉVOA')
+            .setTitle('🏆 RANKING DA ENTIDADE DO NEVOEIRO')
             .setDescription(rankingTexto || 'Ninguém foi encontrado neste servidor.')
             .setFooter({ text: 'Os mais devotos da Entidade' })
             .setTimestamp();
