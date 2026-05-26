@@ -144,6 +144,30 @@ async function getMultiplicadorXP(userId, guild) {
     }
 }
 
+async function isCargoBloqueadoXP(member, guildId) {
+    try {
+        if (!member) return false;
+        
+        const configDoc = await db.collection('servidores_config').doc(guildId).get();
+        const config = configDoc.data();
+        
+        if (!config || !config.cargos_sem_xp || config.cargos_sem_xp.length === 0) {
+            return false;
+        }
+        
+        for (const cargoId of config.cargos_sem_xp) {
+            if (member.roles.cache.has(cargoId)) {
+                return true;
+            }
+        }
+        
+        return false;
+    } catch (error) {
+        console.error('❌ Erro ao verificar cargo bloqueado:', error);
+        return false;
+    }
+}
+
 async function gerenciarCargosPorNivel(membro, nivelNovo, nivelAntigo) {
     try {
         const config = await obterConfigServidor(membro.guild.id);
@@ -214,7 +238,6 @@ async function enviarLogAdmin(interaction, operacao, usuario, quantidade, result
     }
 }
 
-// 🟢 FUNÇÕES DO DB ATUALIZADAS PARA ISOLAR POR SERVIDOR (guildId)
 async function garantirUsuario(userId, guildId) {
     try {
         const userRef = db.collection('servidores_xp').doc(guildId).collection('usuarios').doc(userId);
@@ -290,6 +313,11 @@ async function verificarLevelUp(userId, guild, nivelAntigo, nivelNovo) {
 
 async function adicionarXPMensagem(userId, guild, addXp) {
     try {
+        const membro = await guild.members.fetch(userId).catch(() => null);
+        if (membro && await isCargoBloqueadoXP(membro, guild.id)) {
+            return false;
+        }
+        
         await garantirUsuario(userId, guild.id);
         const multiplicador = await getMultiplicadorXP(userId, guild);
         let xpFinal = Math.floor(addXp * multiplicador);
@@ -313,6 +341,11 @@ async function adicionarXPMensagem(userId, guild, addXp) {
 
 async function adicionarXPCall(userId, guild) {
     try {
+        const membro = await guild.members.fetch(userId).catch(() => null);
+        if (membro && await isCargoBloqueadoXP(membro, guild.id)) {
+            return false;
+        }
+        
         await garantirUsuario(userId, guild.id);
         const multiplicador = await getMultiplicadorXP(userId, guild);
         let xpGanho = Math.floor(XP_POR_MINUTO_CALL * multiplicador);
@@ -349,6 +382,8 @@ async function enviarRankingAutomatico() {
             const snapshot = await db.collection('servidores_xp').doc(guildId).collection('usuarios').orderBy('xp', 'desc').limit(15).get();
             if (snapshot.empty) continue;
 
+            const cargosBloqueados = config.cargos_sem_xp || [];
+            
             let rankingTexto = '';
             let posicao = 1;
             for (const userDoc of snapshot.docs) {
@@ -356,11 +391,21 @@ async function enviarRankingAutomatico() {
                 if (data.is_sistema) continue;
                 
                 const membro = await canal.guild.members.fetch(userDoc.id).catch(() => null);
-                if (!membro) continue; 
+                if (!membro) continue;
+                
+                let temCargoBloqueado = false;
+                for (const cargoId of cargosBloqueados) {
+                    if (membro.roles.cache.has(cargoId)) {
+                        temCargoBloqueado = true;
+                        break;
+                    }
+                }
+                
+                if (temCargoBloqueado) continue;
                 
                 rankingTexto += `${posicao}. **${membro.user.username}** - Nível ${data.nivel || 1} (${formatarNumero(data.xp || 0)} XP)\n`;
                 posicao++;
-                if (posicao > 10) break; 
+                if (posicao > 10) break;
             }
 
             const embed = new EmbedBuilder()
@@ -457,7 +502,7 @@ async function corrigirCargosTodos(guild) {
             const nivel = data.nivel || 1;
             
             const membro = await guild.members.fetch(userId).catch(() => null);
-            if (!membro) continue; 
+            if (!membro) continue;
 
             try {
                 for (const cargoId of todosCargosNivel) {
@@ -489,6 +534,10 @@ async function corrigirCargosTodos(guild) {
 
 async function rankingCompleto(interaction) {
     try {
+        const configDoc = await db.collection('servidores_config').doc(interaction.guildId).get();
+        const config = configDoc.data();
+        const cargosBloqueados = config && config.cargos_sem_xp ? config.cargos_sem_xp : [];
+        
         const snapshot = await db.collection('servidores_xp').doc(interaction.guildId).collection('usuarios').orderBy('xp', 'desc').get();
         if (snapshot.empty) return interaction.reply({ content: '❌ Nenhum usuário com XP encontrado!', flags: MessageFlags.Ephemeral });
         
@@ -502,6 +551,16 @@ async function rankingCompleto(interaction) {
             
             const membro = await interaction.guild.members.fetch(doc.id).catch(() => null);
             if (!membro) continue;
+            
+            let temCargoBloqueado = false;
+            for (const cargoId of cargosBloqueados) {
+                if (membro.roles.cache.has(cargoId)) {
+                    temCargoBloqueado = true;
+                    break;
+                }
+            }
+            
+            if (temCargoBloqueado) continue;
             
             const nome = membro.user.username;
             rankingTexto += `${posicao}. **${nome}** - Nível ${data.nivel || 1} (${formatarNumero(data.xp || 0)} XP)\n`;
@@ -555,8 +614,15 @@ client.once('ready', async () => {
             .addStringOption(opt => opt.setName('canais_ignorados').setDescription('Cole aqui as menções dos canais ignorados (Ex: #afk #musica)').setRequired(true))
             .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
-        // NOVO COMANDO: MIGRAÇÃO DE BANCO DE DADOS ANTIGO
         new SlashCommandBuilder().setName('admin_migrar_db').setDescription('🚨 [ADMIN] Migra todo o XP antigo global para este servidor')
+            .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+
+        new SlashCommandBuilder().setName('admin_cargos_sem_xp').setDescription('🚫 [ADMIN] Gerencia cargos que NÃO ganham XP')
+            .addSubcommand(sub => sub.setName('adicionar').setDescription('➕ Adiciona um cargo que NÃO ganhará XP')
+                .addRoleOption(opt => opt.setName('cargo').setDescription('Cargo que não ganhará XP').setRequired(true)))
+            .addSubcommand(sub => sub.setName('remover').setDescription('➖ Remove um cargo da lista de bloqueio')
+                .addRoleOption(opt => opt.setName('cargo').setDescription('Cargo que voltará a ganhar XP').setRequired(true)))
+            .addSubcommand(sub => sub.setName('listar').setDescription('📋 Lista todos os cargos que não ganham XP'))
             .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
         new SlashCommandBuilder().setName('admin_xp').setDescription('⚙️ [ADMIN] Gerencia XP de usuários')
@@ -732,7 +798,6 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // 🟢 NOVO COMANDO PARA RECUPERAR OS DADOS DO SERVIDOR PRINCIPAL
     if (interaction.commandName === 'admin_migrar_db') {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         try {
@@ -744,17 +809,84 @@ client.on('interactionCreate', async interaction => {
             let count = 0;
             for (const doc of oldSnapshot.docs) {
                 const data = doc.data();
-                if (data.is_sistema) continue; // Ignora logs de sistema antigos
+                if (data.is_sistema) continue;
                 
                 const newRef = db.collection('servidores_xp').doc(interaction.guildId).collection('usuarios').doc(doc.id);
                 await newRef.set(data, { merge: true });
                 count++;
             }
             
-            return interaction.editReply(`✅ **Migração concluída com sucesso!**\nForam transferidos **${count}** perfis de usuários antigos para o sistema isolado deste servidor.\n\nUse \x60/admin_corrigir_niveis\x60 e \x60/admin_corrigir_cargos\x60 logo em seguida para alinhar tudo!`);
+            return interaction.editReply(`✅ **Migração concluída com sucesso!**\nForam transferidos **${count}** perfis de usuários antigos para o sistema isolado deste servidor.\n\nUse \`/admin_corrigir_niveis\` e \`/admin_corrigir_cargos\` logo em seguida para alinhar tudo!`);
         } catch (error) {
             console.error('Erro na migração:', error);
             return interaction.editReply(`❌ Ocorreu um erro ao transferir o banco de dados.`);
+        }
+    }
+
+    if (interaction.commandName === 'admin_cargos_sem_xp') {
+        if (!isAdmin(interaction.member)) {
+            return interaction.reply({ content: '❌ **Acesso Negado!**', flags: MessageFlags.Ephemeral });
+        }
+        
+        const sub = interaction.options.getSubcommand();
+        const configRef = db.collection('servidores_config').doc(interaction.guildId);
+        const configDoc = await configRef.get();
+        let cargosAtuais = configDoc.exists && configDoc.data().cargos_sem_xp ? configDoc.data().cargos_sem_xp : [];
+        
+        if (sub === 'adicionar') {
+            const cargo = interaction.options.getRole('cargo');
+            
+            if (cargosAtuais.includes(cargo.id)) {
+                return interaction.reply({ content: `❌ O cargo ${cargo} já está na lista de bloqueio!`, flags: MessageFlags.Ephemeral });
+            }
+            
+            cargosAtuais.push(cargo.id);
+            await configRef.set({ cargos_sem_xp: cargosAtuais }, { merge: true });
+            
+            return interaction.reply({ 
+                content: `✅ **Cargo adicionado!**\n\nO cargo ${cargo} agora NÃO ganhará mais XP e não aparecerá no ranking.\n\n**Importante:** Membros com este cargo não ganharão XP em mensagens nem em calls de voz.`,
+                flags: MessageFlags.Ephemeral 
+            });
+        }
+        
+        if (sub === 'remover') {
+            const cargo = interaction.options.getRole('cargo');
+            
+            if (!cargosAtuais.includes(cargo.id)) {
+                return interaction.reply({ content: `❌ O cargo ${cargo} não está na lista de bloqueio!`, flags: MessageFlags.Ephemeral });
+            }
+            
+            cargosAtuais = cargosAtuais.filter(id => id !== cargo.id);
+            await configRef.set({ cargos_sem_xp: cargosAtuais }, { merge: true });
+            
+            return interaction.reply({ 
+                content: `✅ **Cargo removido!**\n\nO cargo ${cargo} agora voltará a ganhar XP normalmente.`,
+                flags: MessageFlags.Ephemeral 
+            });
+        }
+        
+        if (sub === 'listar') {
+            if (cargosAtuais.length === 0) {
+                return interaction.reply({ 
+                    content: `📋 **Lista de cargos bloqueados:**\n\nNenhum cargo está bloqueado no momento.\n\nUse \`/admin_cargos_sem_xp adicionar\` para bloquear um cargo.`,
+                    flags: MessageFlags.Ephemeral 
+                });
+            }
+            
+            let listaCargos = '';
+            for (const cargoId of cargosAtuais) {
+                const cargo = interaction.guild.roles.cache.get(cargoId);
+                if (cargo) {
+                    listaCargos += `• ${cargo}\n`;
+                } else {
+                    listaCargos += `• Cargo ID: ${cargoId} (não encontrado)\n`;
+                }
+            }
+            
+            return interaction.reply({ 
+                content: `📋 **Cargos que NÃO ganham XP:**\n\n${listaCargos}\n\nMembros com estes cargos não ganharão XP e não aparecerão no ranking.`,
+                flags: MessageFlags.Ephemeral 
+            });
         }
     }
 
@@ -798,24 +930,7 @@ client.on('interactionCreate', async interaction => {
                 { name: '🎯 COMO GANHAR XP', value: '\x60\x60\x60\n📝 Mensagens: 15-25 XP (cooldown de 10 segundos)\n🎤 Call de Voz: 10 XP por minuto (tempo real)\n⚡ Booster: 2.2x mais XP!\n👑 VIP LEGACY: 2.0x mais XP!\n\x60\x60\x60', inline: false },
                 { name: '📊 NÍVEIS E CONQUISTAS', value: '\x60\x60\x60\n🏆 Nível 1: Inexperienced (0 XP)\n🏆 Nível 10: Deja Vu (10.000 XP)\n🏆 Nível 20: Quick & Quiet (25.000 XP)\n🏆 Nível 30: Self-Care (45.000 XP)\n🏆 Nível 40: Bond (70.000 XP)\n🏆 Nível 50: Leader (100.000 XP)\n🏆 Nível 60: Adrenaline (135.000 XP)\n🏆 Nível 70: Borrowed Time (175.000 XP)\n🏆 Nível 80: BBQ & Chili (220.000 XP)\n🏆 Nível 90: Dying Light (270.000 XP)\n🏆 Nível 100: Devour Hope (325.000 XP)\n🏆 Nível 110: Corrupt Intervention (385.000 XP)\n🏆 Nível 120: No One Escapes Death (450.000 XP)\n🏆 Nível 130: Nemesis (515.000 XP)\n🏆 Nível 140: Blood Warden (590.000 XP)\n🏆 Nível 150: Decisive Strike (670.000 XP)\n\x60\x60\x60', inline: false },
                 { name: '👥 COMANDOS PÚBLICOS', value: '\x60\x60\x60\n/perfil - Ver seu perfil\n/manual - Manual do usuário\n/ranking_completo - Ver todos\n\x60\x60\x60', inline: true },
-                { name: '🛡️ COMANDOS ADMIN', value: '\x60\x60\x60\n/ranking - Top 10\n/admin_xp add/remove/set/reset\n/admin_ver - Info de usuário\n/admin_corrigir_niveis\n/admin_corrigir_cargos\n/admin_migrar_db\n/manual_adm - Este menu\n\x60\x60\x60', inline: true },
-                { name: '🛠️ CONFIGURANDO UM NOVO SERVIDOR (ADMINS)', value: '\x60\x60\x60\n1️⃣ Use /setup_servidor para escolher os canais.\n2️⃣ Use /setup_cargos para o bot criar os 16 cargos de nível automaticamente.\n3️⃣ Use /setup_multiplicadores para criar os cargos extras.\n4️⃣ Use /setup_orientacoes para gerar a postagem de regras.\n⚠️ O cargo do bot precisa ter a permissão "Gerenciar Cargos" e estar no TOPO da lista de cargos!\n\x60\x60\x60', inline: false }
-            )
-            .setFooter({ text: 'Sistema de Progressão (Admin)' })
-            .setTimestamp();
-        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
-    }
-
-    if (interaction.commandName === 'manual_adm') {
-        const embed = new EmbedBuilder()
-            .setColor('#8a0000')
-            .setTitle('📖 MANUAL DO SOBREVIVENTE - [ADMIN]')
-            .setDescription('Bem-vindo ao sistema de progressão!\n*Visão completa com ferramentas administrativas.*')
-            .addFields(
-                { name: '🎯 COMO GANHAR XP', value: '\x60\x60\x60\n📝 Mensagens: 15-25 XP (cooldown de 10 segundos)\n🎤 Call de Voz: 10 XP por minuto (tempo real)\n⚡ Booster: 2.2x mais XP!\n👑 VIP LEGACY: 2.0x mais XP!\n\x60\x60\x60', inline: false },
-                { name: '📊 NÍVEIS E CONQUISTAS', value: '\x60\x60\x60\n🏆 Nível 1: Inexperienced\n🏆 Nível 10: Deja Vu\n🏆 Nível 20: Quick & Quiet\n🏆 Nível 30: Self-Care\n🏆 Nível 40: Bond\n🏆 Nível 50: Leader\n🏆 Nível 60: Adrenaline\n🏆 Nível 70: Borrowed Time\n🏆 Nível 80: BBQ & Chili\n🏆 Nível 90: Dying Light\n🏆 Nível 100: Devour Hope\n🏆 Nível 110: Corrupt Intervention\n🏆 Nível 120: No One Escapes Death\n🏆 Nível 130: Nemesis\n🏆 Nível 140: Blood Warden\n🏆 Nível 150: Decisive Strike\n\x60\x60\x60', inline: false },
-                { name: '👥 COMANDOS PÚBLICOS', value: '\x60\x60\x60\n/perfil - Ver seu perfil\n/manual - Manual do usuário\n/ranking_completo - Ver todos\n\x60\x60\x60', inline: true },
-                { name: '🛡️ COMANDOS ADMIN', value: '\x60\x60\x60\n/ranking - Top 10\n/admin_xp add/remove/set/reset\n/admin_ver - Info de usuário\n/admin_corrigir_niveis\n/admin_corrigir_cargos\n/admin_migrar_db\n/manual_adm - Este menu\n\x60\x60\x60', inline: true },
+                { name: '🛡️ COMANDOS ADMIN', value: '\x60\x60\x60\n/ranking - Top 10\n/admin_xp add/remove/set/reset\n/admin_ver - Info de usuário\n/admin_corrigir_niveis\n/admin_corrigir_cargos\n/admin_migrar_db\n/admin_cargos_sem_xp\n/manual_adm - Este menu\n\x60\x60\x60', inline: true },
                 { name: '🛠️ CONFIGURANDO UM NOVO SERVIDOR (ADMINS)', value: '\x60\x60\x60\n1️⃣ Use /setup_servidor para escolher os canais.\n2️⃣ Use /setup_cargos para o bot criar os 16 cargos de nível automaticamente.\n3️⃣ Use /setup_multiplicadores para criar os cargos extras.\n4️⃣ Use /setup_orientacoes para gerar a postagem de regras.\n⚠️ O cargo do bot precisa ter a permissão "Gerenciar Cargos" e estar no TOPO da lista de cargos!\n\x60\x60\x60', inline: false }
             )
             .setFooter({ text: 'Sistema de Progressão (Admin)' })
@@ -872,24 +987,49 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.commandName === 'ranking') {
-        const snapshot = await db.collection('servidores_xp').doc(interaction.guildId).collection('usuarios').orderBy('xp', 'desc').limit(10).get();
+        const configDoc = await db.collection('servidores_config').doc(interaction.guildId).get();
+        const configRank = configDoc.data();
+        const cargosBloqueados = configRank && configRank.cargos_sem_xp ? configRank.cargos_sem_xp : [];
+        
+        const snapshot = await db.collection('servidores_xp').doc(interaction.guildId).collection('usuarios').orderBy('xp', 'desc').limit(20).get();
         if (snapshot.empty) return interaction.reply({ content: '❌ Nenhum usuário no ranking!' });
+        
         let rankingTexto = '';
         let posicao = 1;
+        let usuariosMostrados = 0;
+        
         for (const doc of snapshot.docs) {
             const data = doc.data();
             if (data.is_sistema) continue;
+            
             const membro = await interaction.guild.members.fetch(doc.id).catch(() => null);
-            if (!membro) continue; 
+            if (!membro) continue;
+            
+            let temCargoBloqueado = false;
+            for (const cargoId of cargosBloqueados) {
+                if (membro.roles.cache.has(cargoId)) {
+                    temCargoBloqueado = true;
+                    break;
+                }
+            }
+            
+            if (temCargoBloqueado) continue;
             
             const nome = membro.user.username;
             rankingTexto += `${posicao}. **${nome}** - Nível ${data.nivel || 1} (${formatarNumero(data.xp || 0)} XP)\n`;
             posicao++;
+            usuariosMostrados++;
+            if (usuariosMostrados >= 10) break;
         }
+        
+        if (rankingTexto === '') {
+            return interaction.reply({ content: '❌ Nenhum usuário elegível encontrado no ranking!' });
+        }
+        
         const embed = new EmbedBuilder()
             .setColor('#ff0033')
             .setTitle('🏆 RANKING DA ENTIDADE DO NEVOEIRO')
-            .setDescription(rankingTexto || 'Ninguém foi encontrado neste servidor.')
+            .setDescription(rankingTexto)
             .setFooter({ text: 'Os mais devotos da Entidade' })
             .setTimestamp();
         await interaction.reply({ embeds: [embed] });
