@@ -101,6 +101,22 @@ Use **`/setup_orientacoes`** para definir quais canais dão XP e quais são igno
 * **`/admin_corrigir_niveis`** - Recalcula níveis com base no XP (útil após migrações).
 * **`/admin_corrigir_cargos`** - Atualiza os cargos de todos os membros de acordo com o nível.
 
+### 🚫 Ignorando Cargos e Usuários (Staff/Bots)
+
+Para manter a competição justa, você pode querer que membros da equipe (Administradores, Moderadores) ou bots do servidor não contabilizem XP e não apareçam nos rankings de top usuários.
+
+**Como utilizar:**
+O comando **`/admin_cargos_sem_xp adicionar`** - Ignora cargos ou usuários específicos (Staff/Bots) para não ganharem XP.
+O comando **`/admin_cargos_sem_xp listar`** - Lista todos os cargos ou usuários que nõa ganham XP, que foram bloqueados através do comando **`/admin_cargos_sem_xp adicionar`**.
+O comando **`/admin_cargos_sem_xp remover cargo:`** - Remove da lista de usuários ou cargos bloqueados, a voltarem a contabilizar XP.
+
+* **Para Ignorar:** Digite o comando, selecione a opção `cargo` ou `usuario` e escolha o alvo. O bot confirmará o bloqueio de interação com o sistema.
+* **Para Desfazer:** Basta rodar o comando novamente selecionando o mesmo alvo. O sistema avisará que a restrição foi removida.
+
+**O que acontece com quem é ignorado?**
+* **Zero XP:** O usuário (ou quem possuir o cargo) não ganhará mais nenhum XP ao enviar mensagens no chat ou ficar em calls de voz.
+* **Modo Fantasma:** Eles serão removidos instantaneamente das listas do `/ranking`, `/ranking_completo` e do ranking automático postado no canal.
+
 ---
 
 ## ⚙️ Instalação e Hospedagem
