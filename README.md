@@ -133,6 +133,3 @@ O comando **`/admin_cargos_sem_xp remover cargo:`** - Remove da lista de usuári
 
 ```env
 TOKEN=SEU_TOKEN_DO_DISCORD_AQUI
-FIREBASE_PROJECT_ID=nome-do-seu-projeto-123
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xyz@seu-projeto-123.iam.gserviceaccount.com
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nSUA_CHAVE_AQUI\n-----END PRIVATE KEY-----\n"
