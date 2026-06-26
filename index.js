@@ -564,14 +564,26 @@ client.on('interactionCreate', async interaction => {
             const c = config.cargos_recompensa;
             const bName = config.cargo_booster ? `<@&${config.cargo_booster}>` : `@Server Booster`;
 
+            // === AQUI COMEÇA A CORREÇÃO ===
+            let listaCargosTexto = '';
+            const niveis = Object.keys(c).sort((a, b) => Number(a) - Number(b)); 
+            
+            for (const nvl of niveis) {
+                listaCargosTexto += `▫️ <@&${c[nvl]}> (Nvl ${nvl})\n`;
+            }
+
             const embed = new EmbedBuilder()
                 .setColor('#000000')
                 .setTitle('🌫️ Progressão no Nevoeiro 🌫️')
-                .setDescription(`A Entidade observa tudo...\n\n🩸 **Canais que dão XP:**\n${matchXP.join(' ')}\n\n⚠️ **Canais ignorados:**\n${matchIgnorados.join(' ')}\n\n👇 **Cargos por Nível** 👇\n▫️ <@&${c['1']||'?'}> (Nvl 1)\n▫️ <@&${c['50']||'?'}> (Nvl 50)\n▫️ <@&${c['100']||'?'}> (Nvl 100)\n▫️ <@&${c['150']||'?'}> (Nvl 150)\n\n• Booster (${bName}) ganha ${MULTIPLICADOR_BOOSTER}x mais XP!`);
-            
+                .setDescription(`A Entidade observa tudo...\n\n🩸 **Canais que dão XP:**\n${matchXP.join(' ')}\n\n⚠️ **Canais ignorados:**\n${matchIgnorados.join(' ')}\n\n👇 **Cargos por Nível** 👇\n${listaCargosTexto}\n• Booster (${bName}) ganha ${MULTIPLICADOR_BOOSTER}x mais XP!`);
+            // === FIM DA CORREÇÃO ===
+
             await canalAlvo.send({ content: '||@everyone||', embeds: [embed] });
             return interaction.editReply(`✅ Mensagem de orientações enviada!`);
-        } catch (error) { return interaction.editReply(`❌ Erro ao gerar mensagem.`); }
+        } catch (error) { 
+            console.error(error); 
+            return interaction.editReply(`❌ Erro ao gerar mensagem.`); 
+        }
     }
 
     if (interaction.commandName === 'admin_cargos_sem_xp') {
